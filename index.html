@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>アプリ整理ツール</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+        body { background: #f5f5f5; }
+        
+        .app { display: flex; flex-direction: column; height: 100vh; }
+        .app.dark { background: #1a1a1a; color: white; }
+        
+        .header { background: white; padding: 16px; border-bottom: 1px solid #e0e0e0; flex-shrink: 0; }
+        .dark .header { background: #2d2d2d; border-color: #444; }
+        
+        .title { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .title h1 { font-size: 24px; margin: 0; }
+        
+        .dark-btn { background: #f0f0f0; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 16px; }
+        .dark .dark-btn { background: #444; }
+        
+        .search { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
+        .dark .search { background: #3d3d3d; border-color: #444; color: white; }
+        
+        .controls { background: white; padding: 12px 16px; border-bottom: 1px solid #e0e0e0; display: flex; gap: 8px; flex-wrap: wrap; }
+        .dark .controls { background: #2d2d2d; border-color: #444; }
+        
+        .btn { border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: bold; white-space: nowrap; }
+        .btn-add { background: #4ECDC4; color: white; }
+        .btn-cat { background: #FFB347; color: white; }
+        .select { padding: 8px 12px; border: 1px solid #ddd; border-radius: 8px; background: white; color: #333; cursor: pointer; }
+        .dark .select { background: #3d3d3d; border-color: #444; color: white; }
+        
+        .tabs { background: white; border-bottom: 1px solid #e0e0e0; overflow-x: auto; display: flex; flex-shrink: 0; }
+        .dark .tabs { background: #2d2d2d; border-color: #444; }
+        
+        .tab { background: #f0f0f0; color: #666; border: none; padding: 12px 16px; cursor: pointer; white-space: nowrap; font-size: 14px; border-bottom: 3px solid transparent; }
+        .dark .tab { background: #333; color: #aaa; }
+        .tab.active { color: white; font-weight: bold; border-bottom-color: currentColor; }
+        
+        .colors { background: white; padding: 12px 16px; border-bottom: 1px solid #e0e0e0; display: flex; gap: 12px; align-items: center; }
+        .dark .colors { background: #2d2d2d; border-color: #444; }
+        .color-palette { display: flex; gap: 6px; flex-wrap: wrap; }
+        .color-btn { width: 28px; height: 28px; border-radius: 50%; border: 1px solid #ccc; cursor: pointer; }
+        .color-btn.sel { border: 3px solid black; }
+        
+        .content { flex: 1; overflow-y: auto; padding: 16px; }
+        .grid { display: grid; max-width: 1200px; margin: 0 auto; }
+        .grid.g4 { grid-template-columns: repeat(4, 1fr); gap: 8px; }
+        .grid.g8 { grid-template-columns: repeat(8, 1fr); gap: 6px; }
+        .grid.g16 { grid-template-columns: repeat(16, 1fr); gap: 4px; }
+        
+        .app-icon { display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 12px; cursor: pointer; aspect-ratio: 1; padding: 4px; text-align: center; color: white; font-weight: 600; box-shadow: 0 2px 8px rgba(0,0,0,0.15); font-size: 11px; }
+        .app-icon:hover { transform: scale(1.05); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+        .app-icon-letter { font-size: 20px; margin-bottom: 2px; }
+        
+        .empty { text-align: center; padding: 40px 20px; color: #999; grid-column: 1/-1; }
+        
+        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: flex-end; z-index: 50; }
+        .modal.hidden { display: none; }
+        .modal-box { background: white; width: 100%; border-radius: 20px 20px 0 0; padding: 20px; max-height: 90vh; overflow-y: auto; }
+        .dark .modal-box { background: #2d2d2d; }
+        
+        .modal h2 { margin-bottom: 16px; font-size: 18px; }
+        .form-grp { margin-bottom: 16px; }
+        .form-lbl { display: block; margin-bottom: 6px; font-size: 14px; font-weight: 500; }
+        .form-inp, .form-sel { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; background: white; color: #333; }
+        .dark .form-inp, .dark .form-sel { background: #3d3d3d; border-color: #444; color: white; }
+        
+        .color-grid { display: flex; gap: 8px; flex-wrap: wrap; }
+        .color-opt { width: 40px; height: 40px; border-radius: 8px; border: 1px solid #ccc; cursor: pointer; }
+        .color-opt.sel { border: 3px solid black; }
+        
+        .btns { display: flex; gap: 10px; margin-top: 16px; }
+        .modal-btn { flex: 1; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .modal-btn.ok { background: #4ECDC4; color: white; }
+        .modal-btn.ok2 { background: #FFB347; color: white; }
+        .modal-btn.cc { background: #f0f0f0; color: #333; }
+        .dark .modal-btn.cc { background: #444; color: white; }
+        
+        @media (max-width: 480px) {
+            .grid.g8 { grid-template-columns: repeat(4, 1fr); }
+            .grid.g16 { grid-template-columns: repeat(6, 1fr); }
+        }
+    </style>
+</head>
+<body>
+    <div class="app" id="app">
+        <div class="header">
+            <div class="title">
+                <h1>📱 アプリ整理</h1>
+                <button class="dark-btn" id="darkBtn">🌙</button>
+            </div>
+            <input type="text" class="search" id="search" placeholder="アプリを検索...">
+        </div>
+        
+        <div class="controls">
+            <button class="btn btn-add" id="addAppBtn">+ アプリ追加</button>
+            <button class="btn btn-cat" id="addCatBtn">+ カテゴリー作成</button>
+            <select class="select" id="gridSel">
+                <option value="4">4×4 グリッド</option>
+                <option value="8">8×8 グリッド</option>
+                <option value="16">16×16 グリッド</option>
+            </select>
+        </div>
+        
+        <div class="tabs" id="tabs"></div>
+        <div class="colors" id="colors" style="display:none;"></div>
+        
+        <div class="content">
+            <div class="grid g4" id="grid"></div>
+        </div>
+    </div>
+    
+    <div class="modal hidden" id="appMod">
+        <div class="modal-box">
+            <h2>アプリを追加</h2>
+            <div class="form-grp">
+                <label class="form-lbl">アプリ名</label>
+                <input type="text" class="form-inp" id="appName" placeholder="例: LINE">
+            </div>
+            <div class="form-grp">
+                <label class="form-lbl">カテゴリー</label>
+                <select class="form-sel" id="appCat"></select>
+            </div>
+            <div class="btns">
+                <button class="modal-btn ok" id="appOk">追加</button>
+                <button class="modal-btn cc" id="appCc">キャンセル</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="modal hidden" id="catMod">
+        <div class="modal-box">
+            <h2>カテゴリーを作成</h2>
+            <div class="form-grp">
+                <label class="form-lbl">カテゴリー名</label>
+                <input type="text" class="form-inp" id="catName" placeholder="例: 教育">
+            </div>
+            <div class="form-grp">
+                <label class="form-lbl">色を選択</label>
+                <div class="color-grid" id="catColors"></div>
+            </div>
+            <div class="btns">
+                <button class="modal-btn ok2" id="catOk">作成</button>
+                <button class="modal-btn cc" id="catCc">キャンセル</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const COLORS = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E2', '#F8B88B', '#52C41A', '#FF85C0', '#5CDBD3', '#FFB347', '#87CEEB', '#DDA0DD', '#F0E68C'];
+        const CATS = [
+            { id: 'msg', name: '通信', color: '#4ECDC4' },
+            { id: 'sns', name: 'SNS', color: '#FF6B6B' },
+            { id: 'game', name: 'ゲーム', color: '#FFB347' },
+            { id: 'prod', name: '仕事・生産性', color: '#45B7D1' },
+            { id: 'shop', name: 'ショッピング', color: '#F8B88B' },
+            { id: 'vid', name: '動画・映画', color: '#FF85C0' },
+            { id: 'mus', name: '音楽', color: '#FFA07A' },
+            { id: 'news', name: 'ニュース', color: '#52C41A' },
+            { id: 'util', name: 'ユーティリティ', color: '#5CDBD3' }
+        ];
+
+        class Mgr {
+            constructor() {
+                this.cats = [];
+                this.apps = [];
+                this.tab = null;
+                this.grid = 4;
+                this.dark = false;
+                this.search = '';
+                this.sel = COLORS[0];
+                this.load();
+                this.init();
+            }
+
+            load() {
+                const d = localStorage.getItem('appMgr');
+                if (d) {
+                    const o = JSON.parse(d);
+                    this.cats = o.cats || CATS;
+                    this.apps = o.apps || [];
+                    this.dark = o.dark || false;
+                    this.grid = o.grid || 4;
+                } else {
+                    this.cats = JSON.parse(JSON.stringify(CATS));
+                }
+                this.tab = this.cats[0]?.id;
+            }
+
+            save() {
+                localStorage.setItem('appMgr', JSON.stringify({ cats: this.cats, apps: this.apps, dark: this.dark, grid: this.grid }));
+            }
+
+            init() {
+                this.render();
+                this.events();
+            }
+
+            render() {
+                const app = document.getElementById('app');
+                app.classList.toggle('dark', this.dark);
+                
+                this.renderTabs();
+                this.renderColors();
+                this.renderGrid();
+                this.renderModals();
+            }
+
+            renderTabs() {
+                const tabs = document.getElementById('tabs');
+                tabs.innerHTML = this.cats.map(c => `<button class="tab ${this.tab === c.id ? 'active' : ''}" data-id="${c.id}" style="background: ${this.tab === c.id ? c.color : 'inherit'}; border-bottom-color: ${this.tab === c.id ? c.color : 'transparent'};">${c.name}</button>`).join('');
+            }
+
+            renderColors() {
+                const col = document.getElementById('colors');
+                if (this.tab) {
+                    col.innerHTML = `<span>色:</span><div class="color-palette">${COLORS.map(c => `<button class="color-btn ${this.getCatColor(this.tab) === c ? 'sel' : ''}" data-color="${c}" style="background: ${c};"></button>`).join('')}</div>`;
+                    col.style.display = 'flex';
+                }
+            }
+
+            renderGrid() {
+                const grid = document.getElementById('grid');
+                const apps = this.getApps();
+                grid.className = `grid g${this.grid}`;
+                grid.innerHTML = apps.length ? apps.map(a => `<div class="app-icon" data-id="${a.id}" style="background: ${this.getCatColor(a.cat)};" title="右クリックで削除"><div class="app-icon-letter">${a.name[0].toUpperCase()}</div><div>${a.name}</div></div>`).join('') : '<div class="empty">このカテゴリーにはアプリがありません</div>';
+            }
+
+            renderModals() {
+                const appCat = document.getElementById('appCat');
+                appCat.innerHTML = '<option value="">-- 選択 --</option>' + this.cats.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+                
+                const catCol = document.getElementById('catColors');
+                catCol.innerHTML = COLORS.map(c => `<button class="color-opt" data-color="${c}" style="background: ${c};"></button>`).join('');
+            }
+
+            getCatColor(id) {
+                return this.cats.find(c => c.id === id)?.color || '#999';
+            }
+
+            getApps() {
+                return this.apps.filter(a => a.cat === this.tab && a.name.toLowerCase().includes(this.search.toLowerCase())).sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+            }
+
+            events() {
+                document.getElementById('darkBtn').onclick = () => { this.dark = !this.dark; this.save(); this.render(); };
+                document.getElementById('search').oninput = (e) => { this.search = e.target.value; this.renderGrid(); };
+                document.getElementById('gridSel').onchange = (e) => { this.grid = parseInt(e.target.value); this.save(); this.renderGrid(); };
+                
+                document.getElementById('addAppBtn').onclick = () => document.getElementById('appMod').classList.remove('hidden');
+                document.getElementById('appCc').onclick = () => document.getElementById('appMod').classList.add('hidden');
+                document.getElementById('appOk').onclick = () => {
+                    const name = document.getElementById('appName').value.trim();
+                    const cat = document.getElementById('appCat').value;
+                    if (name && cat) {
+                        this.apps.push({ id: Date.now(), name, cat });
+                        this.save();
+                        document.getElementById('appMod').classList.add('hidden');
+                        document.getElementById('appName').value = '';
+                        this.renderGrid();
+                    }
+                };
+                
+                document.getElementById('addCatBtn').onclick = () => {
+                    this.sel = COLORS[0];
+                    document.getElementById('catMod').classList.remove('hidden');
+                    setTimeout(() => document.querySelector('[data-color="' + COLORS[0] + '"]').classList.add('sel'), 0);
+                };
+                document.getElementById('catCc').onclick = () => document.getElementById('catMod').classList.add('hidden');
+                document.getElementById('catOk').onclick = () => {
+                    const name = document.getElementById('catName').value.trim();
+                    if (name) {
+                        this.cats.push({ id: Date.now(), name, color: this.sel });
+                        this.tab = this.cats[this.cats.length - 1].id;
+                        this.save();
+                        document.getElementById('catMod').classList.add('hidden');
+                        document.getElementById('catName').value = '';
+                        this.render();
+                        this.events();
+                    }
+                };
+                
+                document.getElementById('tabs').addEventListener('click', (e) => {
+                    if (e.target.classList.contains('tab')) {
+                        this.tab = e.target.getAttribute('data-id');
+                        this.search = '';
+                        this.render();
+                        this.events();
+                    }
+                });
+                
+                document.getElementById('colors').addEventListener('click', (e) => {
+                    if (e.target.classList.contains('color-btn')) {
+                        const color = e.target.getAttribute('data-color');
+                        const cat = this.cats.find(c => c.id === this.tab);
+                        if (cat) {
+                            cat.color = color;
+                            this.save();
+                            this.render();
+                            this.events();
+                        }
+                    }
+                });
+                
+                document.getElementById('grid').addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                    const icon = e.target.closest('.app-icon');
+                    if (icon) {
+                        const id = parseInt(icon.getAttribute('data-id'));
+                        this.apps = this.apps.filter(a => a.id !== id);
+                        this.save();
+                        this.renderGrid();
+                    }
+                });
+                
+                document.getElementById('catColors').addEventListener('click', (e) => {
+                    if (e.target.classList.contains('color-opt')) {
+                        document.querySelectorAll('.color-opt').forEach(b => b.classList.remove('sel'));
+                        e.target.classList.add('sel');
+                        this.sel = e.target.getAttribute('data-color');
+                    }
+                });
+                
+                document.querySelectorAll('.modal').forEach(m => {
+                    m.addEventListener('click', (e) => { if (e.target === m) m.classList.add('hidden'); });
+                });
+            }
+        }
+
+        new Mgr();
+    </script>
+</body>
+</html>
