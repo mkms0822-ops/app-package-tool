@@ -27,10 +27,11 @@
         .controls { background: white; padding: 12px 16px; border-bottom: 1px solid #e0e0e0; display: flex; gap: 8px; flex-wrap: wrap; }
         .dark .controls { background: #2d2d2d; border-color: #444; }
         
-        .btn { border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: bold; white-space: nowrap; }
+        .btn { border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: bold; white-space: nowrap; font-size: 13px; }
         .btn-add { background: #4ECDC4; color: white; }
+        .btn-pre { background: #45B7D1; color: white; }
         .btn-cat { background: #FFB347; color: white; }
-        .select { padding: 8px 12px; border: 1px solid #ddd; border-radius: 8px; background: white; color: #333; cursor: pointer; }
+        .select { padding: 8px 12px; border: 1px solid #ddd; border-radius: 8px; background: white; color: #333; cursor: pointer; font-size: 13px; }
         .dark .select { background: #3d3d3d; border-color: #444; color: white; }
         
         .tabs { background: white; border-bottom: 1px solid #e0e0e0; overflow-x: auto; display: flex; flex-shrink: 0; }
@@ -74,15 +75,33 @@
         .color-opt.sel { border: 3px solid black; }
         
         .btns { display: flex; gap: 10px; margin-top: 16px; }
-        .modal-btn { flex: 1; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .modal-btn { flex: 1; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 14px; }
         .modal-btn.ok { background: #4ECDC4; color: white; }
         .modal-btn.ok2 { background: #FFB347; color: white; }
         .modal-btn.cc { background: #f0f0f0; color: #333; }
         .dark .modal-btn.cc { background: #444; color: white; }
         
+        .preset-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 16px; }
+        .dark .preset-list { gap: 12px; }
+        
+        .preset-btn { padding: 12px; border: 2px solid #ddd; border-radius: 8px; background: white; cursor: pointer; font-weight: bold; text-align: left; }
+        .dark .preset-btn { background: #3d3d3d; border-color: #555; color: white; }
+        .preset-btn:hover { border-color: #4ECDC4; }
+        .preset-btn.sel { border-color: #4ECDC4; background: #f0f7f6; }
+        .dark .preset-btn.sel { background: #1a3a38; }
+        
+        .app-list { max-height: 400px; overflow-y: auto; border: 1px solid #ddd; border-radius: 8px; padding: 8px; }
+        .dark .app-list { border-color: #444; background: #3d3d3d; }
+        
+        .app-item { display: flex; align-items: center; padding: 8px; }
+        .app-item input { margin-right: 8px; cursor: pointer; }
+        .app-item label { flex: 1; cursor: pointer; }
+        
         @media (max-width: 480px) {
             .grid.g8 { grid-template-columns: repeat(4, 1fr); }
             .grid.g16 { grid-template-columns: repeat(6, 1fr); }
+            .preset-list { grid-template-columns: 1fr; }
+            .btn { font-size: 12px; padding: 6px 12px; }
         }
     </style>
 </head>
@@ -98,11 +117,12 @@
         
         <div class="controls">
             <button class="btn btn-add" id="addAppBtn">+ アプリ追加</button>
+            <button class="btn btn-pre" id="presetBtn">📦 プリセット取込</button>
             <button class="btn btn-cat" id="addCatBtn">+ カテゴリー作成</button>
             <select class="select" id="gridSel">
-                <option value="4">4×4 グリッド</option>
-                <option value="8">8×8 グリッド</option>
-                <option value="16">16×16 グリッド</option>
+                <option value="4">4×4</option>
+                <option value="8">8×8</option>
+                <option value="16">16×16</option>
             </select>
         </div>
         
@@ -114,6 +134,7 @@
         </div>
     </div>
     
+    <!-- アプリ追加モーダル -->
     <div class="modal hidden" id="appMod">
         <div class="modal-box">
             <h2>アプリを追加</h2>
@@ -132,6 +153,26 @@
         </div>
     </div>
     
+    <!-- プリセット取込モーダル -->
+    <div class="modal hidden" id="preMod">
+        <div class="modal-box">
+            <h2>プリセットからアプリを追加</h2>
+            <div class="form-grp">
+                <label class="form-lbl">カテゴリーを選択</label>
+                <div class="preset-list" id="presetList"></div>
+            </div>
+            <div class="form-grp">
+                <label class="form-lbl">アプリを選択</label>
+                <div class="app-list" id="preAppList"></div>
+            </div>
+            <div class="btns">
+                <button class="modal-btn ok" id="preOk">追加</button>
+                <button class="modal-btn cc" id="preCc">キャンセル</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- カテゴリー作成モーダル -->
     <div class="modal hidden" id="catMod">
         <div class="modal-box">
             <h2>カテゴリーを作成</h2>
@@ -163,6 +204,18 @@
             { id: 'news', name: 'ニュース', color: '#52C41A' },
             { id: 'util', name: 'ユーティリティ', color: '#5CDBD3' }
         ];
+        
+        const PRESETS = {
+            msg: { name: '通信', apps: ['LINE', 'Messenger', 'Discord', 'Slack', 'WhatsApp', 'Telegram', 'WeChat'] },
+            sns: { name: 'SNS', apps: ['Instagram', 'Twitter', 'Facebook', 'TikTok', 'YouTube', 'Threads', 'Bluesky'] },
+            game: { name: 'ゲーム', apps: ['Candy Crush', 'Pokémon GO', 'Among Us', 'Clash of Clans', 'PUBG', 'Fortnite'] },
+            prod: { name: '仕事・生産性', apps: ['Gmail', 'Outlook', 'Notion', 'Todoist', 'Evernote', 'Microsoft Word', 'Excel', 'Google Drive'] },
+            shop: { name: 'ショッピング', apps: ['Amazon', 'Yahoo', '楽天', 'Uniqlo', 'Zara', 'H&M', 'eBay'] },
+            vid: { name: '動画・映画', apps: ['Netflix', 'Amazon Prime', 'Disney+', 'YouTube', 'Hulu', 'Rakuten TV', 'TwitCasting'] },
+            mus: { name: '音楽', apps: ['Spotify', 'Apple Music', 'YouTube Music', 'Amazon Music', 'LINE Music', 'AWA', 'Podcast'] },
+            news: { name: 'ニュース', apps: ['Google News', 'Yahoo News', 'SmartNews', 'Gunosy', 'NewsPicks', 'Twitter'] },
+            util: { name: 'ユーティリティ', apps: ['Google Chrome', 'Safari', 'Maps', 'Calendar', 'Settings', 'File Manager', 'PDF Reader'] }
+        };
 
         class Mgr {
             constructor() {
@@ -173,6 +226,8 @@
                 this.dark = false;
                 this.search = '';
                 this.sel = COLORS[0];
+                this.presel = null;
+                this.checked = {};
                 this.load();
                 this.init();
             }
@@ -236,6 +291,26 @@
                 
                 const catCol = document.getElementById('catColors');
                 catCol.innerHTML = COLORS.map(c => `<button class="color-opt" data-color="${c}" style="background: ${c};"></button>`).join('');
+                
+                const preList = document.getElementById('presetList');
+                preList.innerHTML = Object.entries(PRESETS).map(([k, v]) => `<button class="preset-btn ${this.presel === k ? 'sel' : ''}" data-preset="${k}">${v.name}</button>`).join('');
+                
+                this.renderPreAppList();
+            }
+
+            renderPreAppList() {
+                const appList = document.getElementById('preAppList');
+                if (!this.presel) {
+                    appList.innerHTML = '<p style="text-align:center; padding:16px; color:#999;">カテゴリーを選択してください</p>';
+                    return;
+                }
+                const apps = PRESETS[this.presel].apps;
+                appList.innerHTML = apps.map(a => `
+                    <div class="app-item">
+                        <input type="checkbox" id="chk_${a}" ${this.checked[a] ? 'checked' : ''}>
+                        <label for="chk_${a}">${a}</label>
+                    </div>
+                `).join('');
             }
 
             getCatColor(id) {
@@ -251,6 +326,7 @@
                 document.getElementById('search').oninput = (e) => { this.search = e.target.value; this.renderGrid(); };
                 document.getElementById('gridSel').onchange = (e) => { this.grid = parseInt(e.target.value); this.save(); this.renderGrid(); };
                 
+                // アプリ追加
                 document.getElementById('addAppBtn').onclick = () => document.getElementById('appMod').classList.remove('hidden');
                 document.getElementById('appCc').onclick = () => document.getElementById('appMod').classList.add('hidden');
                 document.getElementById('appOk').onclick = () => {
@@ -265,6 +341,37 @@
                     }
                 };
                 
+                // プリセット
+                document.getElementById('presetBtn').onclick = () => {
+                    this.presel = null;
+                    this.checked = {};
+                    document.getElementById('preMod').classList.remove('hidden');
+                    this.renderPreAppList();
+                };
+                document.getElementById('preCc').onclick = () => document.getElementById('preMod').classList.add('hidden');
+                document.getElementById('preOk').onclick = () => {
+                    if (!this.presel) return;
+                    const cat = this.tab;
+                    const toAdd = PRESETS[this.presel].apps.filter(a => document.getElementById(`chk_${a}`)?.checked);
+                    toAdd.forEach(name => {
+                        if (!this.apps.find(a => a.name === name && a.cat === cat)) {
+                            this.apps.push({ id: Date.now() + Math.random(), name, cat });
+                        }
+                    });
+                    this.save();
+                    document.getElementById('preMod').classList.add('hidden');
+                    this.renderGrid();
+                };
+                
+                // プリセット選択
+                document.getElementById('presetList').addEventListener('click', (e) => {
+                    if (e.target.classList.contains('preset-btn')) {
+                        this.presel = e.target.getAttribute('data-preset');
+                        this.renderModals();
+                    }
+                });
+                
+                // カテゴリー作成
                 document.getElementById('addCatBtn').onclick = () => {
                     this.sel = COLORS[0];
                     document.getElementById('catMod').classList.remove('hidden');
